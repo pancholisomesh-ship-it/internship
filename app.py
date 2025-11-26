@@ -103,7 +103,7 @@ def register():
         "is_admin": False
     })
 
-    return jsonify({"message": "Registration successful"}), 201
+    return jsonify({"message": "Registration successful","redirect":"/login"}), 201
 
 
 # ---------------- LOGIN API ----------------
