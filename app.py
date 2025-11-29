@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
@@ -7,6 +7,12 @@ import joblib
 import numpy as np
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import time 
+
+graph_folder = os.path.join("static", "graphs")
+os.makedirs(graph_folder, exist_ok=True)
+
 
 # ---------------- App init ----------------
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -75,54 +81,138 @@ def login_page():
     return render_template("login.html")
 
 
+# @app.route('/index')
+# @login_required
+# def index_page():
+#     return render_template("index.html")
+
+
+
 @app.route('/index')
 @login_required
 def index_page():
     return render_template("index.html")
 
 
+
+
 # ---------------- REGISTER API ----------------
+# @app.route('/register', methods=['POST'])
+# def register():
+#     data = request.get_json()
+
+#     username = data.get("username")
+#     password = data.get("password")
+
+#     if not username or not password:
+#         return jsonify({"error": "Missing fields"}), 400
+
+#     if users_collection.find_one({"username": username}):
+#         return jsonify({"error": "User already exists"}), 409
+
+#     hashed = generate_password_hash(password)
+
+#     users_collection.insert_one({
+#         "username": username,
+#         "password": hashed,
+#         "is_admin": True
+
+
+#     })
+
+#     return jsonify({"message": "Registration successful","redirect":"/login"}), 201
+
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
+    data = request.json
 
-    username = data.get("username")
-    password = data.get("password")
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
+    is_admin = data.get('is_admin', False)   # <-- IMPORTANT
+    hashed_password = generate_password_hash(password)
 
-    if not username or not password:
-        return jsonify({"error": "Missing fields"}), 400
 
-    if users_collection.find_one({"username": username}):
-        return jsonify({"error": "User already exists"}), 409
-
-    hashed = generate_password_hash(password)
-
-    users_collection.insert_one({
+    user = {
         "username": username,
-        "password": hashed,
-        "is_admin": False
-    })
+        "password": hashed_password,
+        "email": email,
+        "is_admin": True if is_admin == True else False   
+    }
+    users_collection.insert_one(user)
+    return jsonify({"message": "Registered successfully","redirect":"/login"})
 
-    return jsonify({"message": "Registration successful","redirect":"/login"}), 201
+
+
 
 
 # ---------------- LOGIN API ----------------
+# @app.route('/login', methods=['POST'])
+# def login():
+#     data = request.get_json()
+
+#     username = data.get("username")
+#     password = data.get("password")
+#     email = data.get("email")
+
+#     # --- FIND USER USING USERNAME + EMAIL BOTH ---
+#     user_doc = users_collection.find_one({
+#         "username": username,
+#         "email": email
+#     })
+
+#     # --- USER DOES NOT EXIST ---
+#     if not user_doc:
+#         return jsonify({"error": "Invalid username or email"}), 401
+
+#     # --- CHECK HASHED PASSWORD ---
+#     if not check_password_hash(user_doc["password"], password):
+#         return jsonify({"error": "Invalid password"}), 401
+
+#     # --- LOGIN USER USING FLASK-LOGIN ---
+#     user = User(user_doc)
+#     login_user(user)
+
+#     return jsonify({
+#         "message": "Login successful",
+#         "redirect": "/index"
+#     }), 200
+
+
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
 
-    username = data.get("username")
-    password = data.get("password")
+    # --- FIND USER ONLY BY USERNAME + EMAIL ---
+    user = users_collection.find_one({
+        "username": username,
+        "email": email
+    })
 
-    user_doc = users_collection.find_one({"username": username})
+    # USER NOT FOUND
+    if not user:
+        return jsonify({"message": "Invalid username or email"}), 401
 
-    if not user_doc or not check_password_hash(user_doc["password"], password):
-        return jsonify({"error": "Invalid username or password"}), 401
+    # --- CHECK PLAIN PASSWORD DIRECTLY ---
+    if not check_password_hash(user["password"], password):
+         return jsonify({"error": "Invalid password"}), 401
 
-    user = User(user_doc)
-    login_user(user)
+    # SAVE SESSION
+    session['user_id'] = str(user['_id'])
+    session['is_admin'] = bool(user.get('is_admin', False))
 
-    return jsonify({"message": "Login successful", "redirect": "/index"}), 200
+    # LOGIN USER USING FLASK-LOGIN
+    login_user(User(user))
+
+    # REDIRECT BASED ON ADMIN
+    if session['is_admin']:
+        return jsonify({"message": "Admin login success", "redirect": "/admin"})
+    else:
+        return jsonify({"message": "User login success", "redirect": "/index"})
+
 
 
 # ---------------- LOGOUT ----------------
@@ -134,25 +224,48 @@ def logout():
 
 
 # ---------------- ADMIN PAGE ----------------
+# @app.route('/admin')
+# @login_required
+# def admin():
+#     if not current_user.is_admin:
+#         flash("Admin only!")
+#         return redirect("/")
+
+#     users = []
+#     for u in users_collection.find({}):
+#         users.append({
+#             "id": str(u["_id"]),
+#             "username": u["username"],
+#             "is_admin": u.get("is_admin", False)
+#         })
+
+#     return render_template("admin.html", users=users)
+
+
+
+# @app.route('/make_admin/<user_id>', methods=['POST'])
+
 @app.route('/admin')
 @login_required
-def admin():
+def admin_dashboard():
     if not current_user.is_admin:
-        flash("Admin only!")
-        return redirect("/")
+        return "Access denied: Only admin can open dashboard"
+    return render_template('dashboard.html')
 
-    users = []
-    for u in users_collection.find({}):
-        users.append({
-            "id": str(u["_id"]),
-            "username": u["username"],
-            "is_admin": u.get("is_admin", False)
-        })
+# @login_required
+# def make_admin(user_id):
+#     if not current_user.is_admin:
+#         return jsonify({"error": "Unauthorized"}), 403
 
-    return render_template("admin.html", users=users)
+    # users_collection.update_one(
+    #     {"_id": ObjectId(user_id)},
+    #     {"$set": {"is_admin": True}}
+    # )
+    # return jsonify({"message": "User promoted to admin successfully"})
 
 
-# ---------------- PREDICT API ----------------
+
+# ---------------- GRAPH + PREDICT ----------------
 @app.route('/predict', methods=['POST'])
 def predict():
     if bill_model is None:
@@ -167,9 +280,63 @@ def predict():
     arr = np.array([features], dtype=float)
     prediction = float(bill_model.predict(arr)[0])
 
-    return jsonify({"predicted_bill": prediction})
+    # ----- GRAPH CODE -----
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import os
+
+    graph_folder = "static/graphs"
+    os.makedirs(graph_folder, exist_ok=True)
+
+    # 1. FEATURE GRAPH
+    plt.figure()
+    feature_names = [
+        "Kitchen Items", "Clothes", "Stationary", "Milk",
+        "Beautycare", "Health", "Electronic", "Grocery"
+    ]
+    plt.bar(feature_names, features)
+    plt.xticks(rotation=45)
+    plt.title("Input Features")
+    feature_graph_path = f"{graph_folder}/input_features.png"
+    plt.tight_layout()
+    plt.savefig(feature_graph_path)
+    plt.close()
+
+    # 2. PREDICTION GRAPH
+   # 2. PREDICTION GRAPH – PIE CHART
+    plt.figure()
+    plt.pie([prediction, 1000], labels=["Predicted Bill", ""], autopct="%1.1f%%")
+    plt.title("Predicted Bill Contribution")
+    prediction_graph_path = f"{graph_folder}/prediction_output.png"
+    plt.tight_layout()
+    plt.savefig(prediction_graph_path)
+    plt.close()
+
+
+
+
+
+
+    # ----- RETURN JSON -----
+    ts = int(time.time())
+
+    # ----- RETURN JSON -----
+    return jsonify({
+        "predicted_bill": prediction,
+        "graphs": {
+            "input_features": f"/static/graphs/input_features.png?t={ts}",
+            "prediction_graph": f"/static/graphs/prediction_output.png?t={ts}"
+        }
+    })
+
+
 
 
 # ---------------- MAIN ----------------
+# if __name__ == "__main__":
+#     app.run(debug=True, use_reloader=False)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
