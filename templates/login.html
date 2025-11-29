@@ -138,6 +138,7 @@
     <h2>Login</h2>
 <label>Username:<input type="text" id="username" required></label>
 <label>Password:<input type="password" id="password" required></label>
+<label>Email<input type="email" class="form-control mb-2" id="email" required></label>
 <button type="submit">Login</button>
 <p>Don't have an account? <a href="/register">Register here</a>.</p>
 </form>
@@ -147,11 +148,12 @@
     {e.preventDefault()
         console.log(document.getElementById("login-form"));
         const user = {
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value
+      username: document.getElementById("username").value,
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
     };
 
-    fetch("http://13.203.199.245:5000/login", {
+    fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(user)

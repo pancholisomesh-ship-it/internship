@@ -110,6 +110,9 @@
     <h2>Register</h2>
 <label>Username:<input type="text" id="username" required></label>
 <label>Password:<input type="password" id="password" required></label>
+<label>Email</label>
+<input type="email" id="email" class="form-control" required>
+
 <button type="submit">Register</button>
 <p>Already have an account? <a href="/login">Login here</a>.</p>
 </form>
@@ -118,11 +121,14 @@
     e.preventDefault();
 
     const user = {
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value
-    };
+    username: document.getElementById("username").value,
+    email: document.getElementById("email").value,
+    password: document.getElementById("password").value
+};
+    
 
-    fetch("http://13.203.199.245:5000/register", {
+
+    fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(user)
