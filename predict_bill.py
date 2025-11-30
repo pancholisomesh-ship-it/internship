@@ -10,5 +10,5 @@ def predict_bill(kitchenhomeitems, clothes, Stationary, Milk, Grocery, Beautycar
     return total_bill
 
 # Example usage:
-example_bill = predict_bill(1, 3, 2000, 1500, 3000, 500, 800, 600)
+example_bill = predict_bill(2, 3, 2000, 1500, 3000, 500, 800, 600)
 print("Predicted Total Bill:", example_bill)

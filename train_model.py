@@ -1,6 +1,6 @@
 # train_model.py
 from ml_model import train_and_save_model
-CSV_PATH = 'Monthly expense data.csv'
+CSV_PATH = "monthly expense.csv"
 
 
 if __name__ == '__main__':

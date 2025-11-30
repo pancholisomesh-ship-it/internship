@@ -5,7 +5,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 # Load your dataset
-df = pd.read_csv("Monthly expense data.csv")
+df = pd.read_csv("monthly expense.csv")
+
+
+# df = pd.read_csv("monthly expense.csv", encoding="latin1", engine="python", on_bad_lines="skip")
+
 
 # Columns in your dataset must match:
 # ['Channel','Region','Fresh','Milk','Grocery','Frozen','Detergents_Paper','Delicassen']

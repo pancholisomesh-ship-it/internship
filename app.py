@@ -9,6 +9,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import time 
+import matplotlib.pyplot as plt
 
 graph_folder = os.path.join("static", "graphs")
 os.makedirs(graph_folder, exist_ok=True)
@@ -87,11 +88,20 @@ def login_page():
 #     return render_template("index.html")
 
 
-
 @app.route('/index')
 @login_required
 def index_page():
+    if "monthly_income" not in session:
+        return redirect("/income")
     return render_template("index.html")
+
+
+# ---------------- INCOME PAGE ----------------
+@app.route('/income')
+@login_required
+def income_page():
+    return render_template("income.html")
+
 
 
 
@@ -215,6 +225,21 @@ def login():
 
 
 
+# ---------------- SAVE INCOME ----------------
+@app.route('/save_income', methods=['POST'])
+@login_required
+def save_income():
+    data = request.json
+    income = float(data.get("income"))
+    session["monthly_income"] = income
+    return jsonify({"message": "Income saved", "redirect": "/index"})
+
+
+
+
+
+
+
 # ---------------- LOGOUT ----------------
 @app.route('/logout')
 @login_required
@@ -266,7 +291,56 @@ def admin_dashboard():
 
 
 # ---------------- GRAPH + PREDICT ----------------
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     if bill_model is None:
+#         return jsonify({"error": "Model file missing"}), 500
+
+#     data = request.get_json()
+#     features = data.get("features")
+
+#     if not features or len(features) != 8:
+#         return jsonify({"error": "Need 8 features"}), 400
+
+#     arr = np.array([features], dtype=float)
+#     prediction = float(bill_model.predict(arr)[0])
+
+#     # ----- GRAPH CODE -----
+#     import matplotlib
+#     matplotlib.use('Agg')
+#     import matplotlib.pyplot as plt
+#     import os
+
+#     graph_folder = "static/graphs"
+#     os.makedirs(graph_folder, exist_ok=True)
+
+#     # 1. FEATURE GRAPH
+#     plt.figure()
+#     feature_names = [
+#         "Kitchen Items", "Clothes", "Stationary", "Milk",
+#         "Beautycare", "Health", "Electronic", "Grocery"
+#     ]
+#     plt.bar(feature_names, features)
+#     plt.xticks(rotation=45)
+#     plt.title("Input Features")
+#     feature_graph_path = f"{graph_folder}/input_features.png"
+#     plt.tight_layout()
+#     plt.savefig(feature_graph_path)
+#     plt.close()
+
+#     # 2. PREDICTION GRAPH
+#    # 2. PREDICTION GRAPH – PIE CHART
+#     plt.figure()
+#     plt.pie([prediction, 1000], labels=["Predicted Bill", ""], autopct="%1.1f%%")
+#     plt.title("Predicted Bill Contribution")
+#     prediction_graph_path = f"{graph_folder}/prediction_output.png"
+#     plt.tight_layout()
+#     plt.savefig(prediction_graph_path)
+#     plt.close()
+
+
 @app.route('/predict', methods=['POST'])
+@login_required
 def predict():
     if bill_model is None:
         return jsonify({"error": "Model file missing"}), 500
@@ -280,7 +354,11 @@ def predict():
     arr = np.array([features], dtype=float)
     prediction = float(bill_model.predict(arr)[0])
 
-    # ----- GRAPH CODE -----
+    # income & savings
+    income = session.get("monthly_income", 0)
+    remaining = income - prediction
+
+    # GRAPH
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -289,46 +367,50 @@ def predict():
     graph_folder = "static/graphs"
     os.makedirs(graph_folder, exist_ok=True)
 
-    # 1. FEATURE GRAPH
+    # FEATURE GRAPH
     plt.figure()
-    feature_names = [
-        "Kitchen Items", "Clothes", "Stationary", "Milk",
-        "Beautycare", "Health", "Electronic", "Grocery"
-    ]
-    plt.bar(feature_names, features)
+    labels = ["Kitchen Items","Clothes","Stationary","Milk","Beautycare","Health","Electronic","Grocery"]
+    plt.bar(labels, features)
     plt.xticks(rotation=45)
     plt.title("Input Features")
-    feature_graph_path = f"{graph_folder}/input_features.png"
     plt.tight_layout()
-    plt.savefig(feature_graph_path)
+    plt.savefig(f"{graph_folder}/input_features.png")
     plt.close()
 
-    # 2. PREDICTION GRAPH
-   # 2. PREDICTION GRAPH – PIE CHART
+    # PREDICTION GRAPH
     plt.figure()
-    plt.pie([prediction, 1000], labels=["Predicted Bill", ""], autopct="%1.1f%%")
-    plt.title("Predicted Bill Contribution")
-    prediction_graph_path = f"{graph_folder}/prediction_output.png"
+    plt.bar(["Predicted Bill"], [prediction])
+    plt.title("Predicted Bill Amount")
     plt.tight_layout()
-    plt.savefig(prediction_graph_path)
+    plt.savefig(f"{graph_folder}/prediction_output.png")
     plt.close()
 
+    # ts = int(time.time())
+
+    # return jsonify({
+    #     "predicted_bill": prediction,
+    #     "remaining_amount": remaining,
+    #     "graphs": {
+    #         "input_features": f"/static/graphs/input_features.png?t={ts}",
+    #         "prediction_graph": f"/static/graphs/prediction_output.png?t={ts}"
+    #     }
+    # })
 
 
 
 
 
-    # ----- RETURN JSON -----
+
     ts = int(time.time())
-
-    # ----- RETURN JSON -----
     return jsonify({
-        "predicted_bill": prediction,
-        "graphs": {
-            "input_features": f"/static/graphs/input_features.png?t={ts}",
-            "prediction_graph": f"/static/graphs/prediction_output.png?t={ts}"
-        }
-    })
+            "predicted_bill": prediction,
+            "remaining_amount": remaining,
+            "graphs": {
+                "input_features": f"/static/graphs/input_features.png?t={ts}",
+                "prediction_graph": f"/static/graphs/prediction_output.png?t={ts}"
+            }
+        })
+
 
 
 
