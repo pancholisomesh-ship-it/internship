@@ -379,7 +379,7 @@ def predict():
 
     # PREDICTION GRAPH
     plt.figure()
-    plt.bar(["Predicted Bill"], [prediction])
+    plt.pie(["Predicted Bill"], [prediction])
     plt.title("Predicted Bill Amount")
     plt.tight_layout()
     plt.savefig(f"{graph_folder}/prediction_output.png")
