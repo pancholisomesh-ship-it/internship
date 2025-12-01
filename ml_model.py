@@ -15,7 +15,18 @@ df = pd.read_csv("monthly expense.csv")
 # ['Channel','Region','Fresh','Milk','Grocery','Frozen','Detergents_Paper','Delicassen']
 
 # Create target variable: Total amount spent
-df["Total_Bill"] = df["kitchenhomeitems"] + df["Milk"] + df["Grocery"] + df["clothes"] + df["Electronic"] + df["Stationary"] + df["Beautycares"] + df["Healthfitness"]
+
+cols = ["kitchenhomeitems", "Milk", "Grocery", "clothes", "Electronic", "Stationary", "Beautycares", "Healthfitness"]
+
+# Convert all to numeric, replace errors with 0
+df[cols] = df[cols].apply(pd.to_numeric, errors="coerce").fillna(0)
+
+# Now safely calculate total
+df["Total_Bill"] = df[cols].sum(axis=1)
+
+
+# 
+
 
 # Feature columns
 X = df[['kitchenhomeitems','clothes','Electronic','Milk','Grocery','Stationary','Beautycares','Healthfitness']]
