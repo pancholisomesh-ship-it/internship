@@ -378,12 +378,13 @@ def predict():
     plt.close()
 
     # PREDICTION GRAPH
-    plt.figure()
-    plt.pie(["Predicted Bill"], [prediction])
+    # import matplotlib.pyplot as plt
+
+    plt.pie([prediction], labels=["Predicted Bill"], autopct="%1.1f%%")
     plt.title("Predicted Bill Amount")
-    plt.tight_layout()
     plt.savefig(f"{graph_folder}/prediction_output.png")
     plt.close()
+
 
     # ts = int(time.time())
 
